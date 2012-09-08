@@ -1,16 +1,12 @@
 object Life {
-  val life = new GameOfLife(new Grid(20, 20))
+  val grid = new Grid(100, 100)
+  val life = new GameOfLife(grid)
 
-  life.birthCell(1,1)
-  life.birthCell(2,1)
-  life.birthCell(3,1)
-  life.birthCell(4,1)
-  life.birthCell(2,2)
-  life.birthCell(2,3)
-
-  println(life)
+  life.birthCell(5,6)
+  life.birthCell(5,7)
+  life.birthCell(5,8)
 
   def main(args:Array[String]) = {
-    println("Life")
+    new Runner(life, new Renderer(grid.width * 4, grid.height * 4)).run()
   }
 }

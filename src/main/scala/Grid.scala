@@ -10,6 +10,12 @@ class Grid(val width:Int,
     cells(x)(y) = if (s) 1 else 0
   }
 
+  def getCells() = {
+    val dest = Array.ofDim[Int](width, height)
+    Array.copy(cells, 0, dest, 0, cells.length)
+    dest
+  }
+
   override def toString() = {
     cells.map(row =>
         row.map(i => if(i==1) "x"  else ".").mkString("")
@@ -27,9 +33,7 @@ class Grid(val width:Int,
   }
 
   def copy() = {
-    val dest = Array.ofDim[Int](width, height)
-    Array.copy(cells, 0, dest, 0, cells.length)
-    new Grid(width, height, dest)
+    new Grid(width, height, getCells())
   }
 
   def getNeighbors(x:Int, y:Int) = {
@@ -54,14 +58,22 @@ class Grid(val width:Int,
     val _next = new Grid(width, height, Array.ofDim[Int](width, height))
 
     for ((col, i) <- cells.zipWithIndex) {
-      for ((row, j) <- col.zipWithIndex) {
-        val neighbors = getNeighbors(i,j)
-        val count = neighbors.sum
-        if (count > 1 && count < 4) {
-          _next.setCell(i,j,true)
+      for ((cell, j) <- col.zipWithIndex) {
+        val count = getNeighbors(i,j).sum
+        if (cell == 1) {
+          if ( count < 2) {
+            _next.setCell(i,j,false)
+          } else if ( count > 3) {
+            _next.setCell(i,j,false)
+          } else {
+            _next.setCell(i,j,true)
+          }
+        } else {
+          if ( count == 3 ) {
+            _next.setCell(i,j,true)
+          }
         }
       }
-
     }
     _next
   }
