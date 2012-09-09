@@ -18,4 +18,11 @@ class GameOfLife(grid:Grid,
   def next():GameOfLife = {
     new GameOfLife(grid.next(), grid :: history)
   }
+
+  def previous:GameOfLife = {
+    history match {
+      case x::xs => new GameOfLife(x, xs)
+      case Nil => new GameOfLife(grid)
+    }
+  }
 }

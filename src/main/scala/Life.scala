@@ -4,6 +4,8 @@ object Life {
 
   life.birthCell(5,6)
   life.birthCell(5,7)
+  life.birthCell(6,7)
+  life.birthCell(7,7)
   life.birthCell(5,8)
 
   def main(args:Array[String]) = {
