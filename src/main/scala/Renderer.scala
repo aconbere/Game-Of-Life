@@ -1,3 +1,5 @@
+package com.conbere.life
+
 import java.awt.Canvas
 import java.awt.Color
 import java.awt.Frame
@@ -91,7 +93,7 @@ class Renderer(width:Int, height:Int) {
     for (j <- 0 to height) bgGraphics.draw(new Line2D.Double(0, j*4, width, j*4))
   }
 
-  def render(game:GameOfLife):Unit = {
+  def render(grid:Grid):Unit = {
     val bgGraphics = background.createGraphics()
     bgGraphics.setColor(Color.WHITE)
     bgGraphics.fill(new Rectangle(0,0,height,width))
@@ -100,7 +102,7 @@ class Renderer(width:Int, height:Int) {
 
     bgGraphics.setColor(Color.BLACK)
 
-    game.foreach((i,j,live) => if (live) bgGraphics.fill(new Rectangle(i*4,j*4,4,4)))
+    grid.foreach((i,j,live) => if (live) bgGraphics.fill(new Rectangle(i*4,j*4,4,4)))
 
     val graphics = strategy.getDrawGraphics()
     graphics.drawImage(background, 0, 0, null);
@@ -112,5 +114,3 @@ class Renderer(width:Int, height:Int) {
     graphics.dispose()
   }
 }
-
-
