@@ -1,5 +1,7 @@
 package com.conbere.life
 
+import com.codahale.logula.Logging
+
 package object M {
   type Matrix = Array[Array[Boolean]]
 
@@ -18,25 +20,28 @@ package object M {
    *
    */
   def lifeMatrix(width:Int, height:Int) = {
+    println("lifeMatrix:%s,%s".format(width, height))
     Array.ofDim[Boolean](width, height)
   }
 
   def stitch(width:Int, height:Int)(grids:List[Grid]) = {
     val m = lifeMatrix(width, height)
 
-    // copies the top of the source grids into the top
-    // of the destination matrix
-    Array.copy(grids(0).cells, 0, m, 0, m.length)
-    Array.copy(grids(1).cells, 0, m, 0, m.length)
+    val mid = width/2
 
-    for (j <- width/2 to width) {
-      val col = m(j)
-      Array.copy(grids(2).cells(j), 0, col, height/2, col.length)
-    }
+    for (i <- 0 until width) {
+      val col = m(i)
 
-    for (j <- 0 to width/2) {
-      val col = m(j)
-      Array.copy(grids(3).cells(j), 0, col, height/2, col.length)
+      val cells = if (i < mid) {
+                    Array.concat(grids(0).cells(i),
+                                 grids(3).cells(i))
+                  } else {
+                    Array.concat(grids(1).cells(i - mid),
+                                 grids(2).cells(i - mid))
+                  }
+
+
+      Array.copy(cells, 0, col, 0, col.length)
     }
 
     new Grid(width, height, m)
@@ -45,14 +50,19 @@ package object M {
 
 class Rect(val x1:Int, val y1:Int,
            val x2:Int, val y2:Int) {
-  def width = x1 - x2
-  def height = y1 - y2
+  require(x2 > x1)
+  require(y2 > y1)
+
+  def width = x2 - x1
+  def height = y2 - y1
+
+  override def toString = "Rect(%s,%s,%s,%s)".format(x1,y1,x2,y2)
 }
 
 class Grid(val width:Int,
            val height:Int,
            val cells:M.Matrix
-           ) {
+           ) extends Logging {
 
   val d = new Rect(0,0,width,height)
 
@@ -143,14 +153,13 @@ class Grid(val width:Int,
     }
   }
 
-
   def next(rect:Rect=d):Grid= {
     val _next = M.lifeMatrix(rect.width, rect.height)
 
-    for (i <- rect.x1 to rect.x2;
-         j <- rect.y1 to rect.y2) {
-      val count = getNeighbors(i,j).map(x => if (x) 1 else 0 ).sum
+    for (i <- rect.x1 until rect.x2;
+         j <- rect.y1 until rect.y2) {
       val cell = cells(i)(j)
+      val count = getNeighbors(i,j).map(x => if (x) 1 else 0 ).sum
 
       if (count == 3 || (cell && count == 2)) {
         _next(i)(j) = true

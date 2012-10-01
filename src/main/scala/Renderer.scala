@@ -1,5 +1,7 @@
 package com.conbere.life
 
+import com.codahale.logula.Logging
+
 import java.awt.Canvas
 import java.awt.Color
 import java.awt.Frame
@@ -49,7 +51,7 @@ class LifeMouseListener(callback:(Int, Int, Int) => Unit) extends MouseListener 
   }
 }
 
-class Renderer(width:Int, height:Int) {
+class Renderer(width:Int, height:Int) extends Logging {
   val config = GraphicsEnvironment
                         .getLocalGraphicsEnvironment()
                         .getDefaultScreenDevice()
@@ -59,11 +61,6 @@ class Renderer(width:Int, height:Int) {
   canvas.setSize(width, height)
 
   val frame = new JFrame()
-  frame.addWindowListener(new WindowAdapter() {
-    override def windowClosing(e : WindowEvent) = {
-      System.exit(0)
-    }
-  })
   frame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE)
   frame.setSize(width, height);
   frame.add(canvas, 0);
@@ -75,11 +72,19 @@ class Renderer(width:Int, height:Int) {
 
   val background = config.createCompatibleImage(width, height, Transparency.OPAQUE)
 
-  def addKeyListener(callback:(Int) => Unit) {
+  def addWindowListener(callback:() => Unit) = {
+    frame.addWindowListener(new WindowAdapter() {
+      override def windowClosing(e : WindowEvent) = {
+        callback()
+      }
+    })
+  }
+
+  def addKeyListener(callback:(Int) => Unit) = {
     frame.addKeyListener(new LifeKeyListener(callback))
   }
 
-  def addMouseListener(callback:(Int, Int, Int) => Unit) {
+  def addMouseListener(callback:(Int, Int, Int) => Unit) = {
     frame.addMouseListener(new LifeMouseListener(callback))
   }
 
@@ -94,6 +99,7 @@ class Renderer(width:Int, height:Int) {
   }
 
   def render(grid:Grid):Unit = {
+    log.info("Renderer:render()")
     val bgGraphics = background.createGraphics()
     bgGraphics.setColor(Color.WHITE)
     bgGraphics.fill(new Rectangle(0,0,height,width))
@@ -109,7 +115,7 @@ class Renderer(width:Int, height:Int) {
 
     strategy.show()
     Toolkit.getDefaultToolkit().sync()
-    Thread.sleep(1000)
+    Thread.sleep(250)
 
     graphics.dispose()
   }

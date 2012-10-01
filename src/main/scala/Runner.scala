@@ -1,5 +1,7 @@
 package com.conbere.life
 
+import com.codahale.logula.Logging
+
 import java.awt.event.KeyEvent.{ VK_ESCAPE
                                , VK_SPACE
                                , VK_LEFT
@@ -17,32 +19,37 @@ case object REVERSED extends State { val name = "Reversed" }
 
 case class Next(val grid:Grid)
 
-class GridShardActor(shard:Rect) extends Actor {
+class GridShardActor(shard:Rect) extends Actor with Logging {
   def act() = {
     loop {
       react {
-        case Next(grid:Grid) => reply(grid.next(shard))
+        case Next(grid:Grid) =>
+          log.info("GridShardActor:next(): %s".format(shard))
+          reply(grid.next(shard))
+        case _ => exit()
       }
     }
   }
 }
 
-class Runner(grid:Grid, renderer:Renderer) extends Actor {
+class Runner(grid:Grid, renderer:Renderer) extends Logging {
   var state:State = RUNNING
   var history:List[Grid] = List()
 
   val workers = grid.shards.map(s => new GridShardActor(s))
+  workers.foreach(w => w.start())
+
   val _stitch = M.stitch(grid.height, grid.width) _
 
-  def next() = {
-    val n = _stitch(workers.map(w => w !! Next(grid))
+  def next(g:Grid, h:List[Grid]) = {
+    log.info("Runner:next()")
+    val n = _stitch(workers.map(w => w !! Next(g))
                            .map(f =>
                               f() match {
                                 case newGrid:Grid => newGrid
                                 case _ => throw new Exception("oops")
                               }))
-    history = history :+ n
-    n
+    (n, n +: h)
   }
 
   renderer.addKeyListener((keycode:Int) =>
@@ -60,31 +67,45 @@ class Runner(grid:Grid, renderer:Renderer) extends Actor {
     }
   )
 
-  renderer.addMouseListener((button:Int, x:Int, y:Int) =>
-    println("wtf")
-  )
+  renderer.addMouseListener((button:Int, x:Int, y:Int) => println("wtf"))
 
-  def act() = {
-    def run(g:Grid):Unit = {
+  def stop() = {
+    renderer.dispose()
+    workers.foreach(w => w ! None)
+    System.exit(0)
+  }
+
+
+  renderer.addWindowListener(() => stop())
+
+  def run() = {
+    log.info("Runner:run()")
+    def inner(g:Grid, h:List[Grid]):Unit = {
+      log.info("Runner:run():inner()")
       state match {
         case RUNNING =>
+          log.info("RUNNING")
           renderer.render(g)
-          run(next())
+          (inner _).tupled(next(g, h))
         case REVERSED =>
+          log.info("REVERSED")
           renderer.render(g)
-          history match {
-            case x::xs => run(x)
-            case Nil => state = PAUSED
+          h match {
+            case x::xs => inner(x, xs)
+            case Nil =>
+              state = PAUSED
+              inner(g,h)
           }
         case STOPPED =>
-          renderer.dispose()
-          System.exit(0)
+          log.info("STOPPED")
+          stop()
         case PAUSED =>
-          run(g)
+          log.info("PAUSED")
+          renderer.render(g)
+          inner(g, h)
         case _ =>
       }
     }
-    run(grid)
+    inner(grid, List())
   }
-
 }
