@@ -20,7 +20,6 @@ package object M {
    *
    */
   def lifeMatrix(width:Int, height:Int) = {
-    println("lifeMatrix:%s,%s".format(width, height))
     Array.ofDim[Boolean](width, height)
   }
 
@@ -70,8 +69,16 @@ class Grid(val width:Int,
     this(width, height, M.lifeMatrix(width, height))
   }
 
+  def flipCell(x:Int, y:Int) = {
+    cells(x)(y) = !cells(x)(y)
+  }
+
   def setCell(x:Int, y:Int, s:Boolean) = {
     cells(x)(y) = s
+  }
+
+  def getCell(x:Int, y:Int) = {
+    cells(x)(y)
   }
 
   def getCells():M.Matrix = {

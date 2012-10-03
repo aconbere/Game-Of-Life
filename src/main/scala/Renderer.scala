@@ -19,6 +19,8 @@ import java.awt.event.KeyListener
 import java.awt.event.KeyEvent
 import java.awt.event.MouseListener
 import java.awt.event.MouseEvent
+import java.awt.event.FocusListener
+import java.awt.event.FocusEvent
 
 import java.awt.image.BufferStrategy
 import java.awt.image.BufferedImage
@@ -26,7 +28,20 @@ import java.awt.image.BufferedImage
 import javax.swing.JFrame
 import javax.swing.WindowConstants
 
-class LifeKeyListener(callback:(Int) => Unit) extends KeyListener {
+class LifeFocusListener(callback:() => Unit)
+  extends FocusListener with Logging {
+  def focusGained(event:FocusEvent) = {
+    log.info("LifeFocusListener:focusGained()")
+    callback()
+  }
+
+  def focusLost(event:FocusEvent) = {
+    log.info("LifeFocusListener:focusLost()")
+  }
+}
+
+class LifeKeyListener(callback:(Int) => Unit)
+  extends KeyListener with Logging {
   def keyPressed(event:KeyEvent) = {
     callback(event.getKeyCode())
   }
@@ -35,20 +50,15 @@ class LifeKeyListener(callback:(Int) => Unit) extends KeyListener {
   def keyTyped(event:KeyEvent) = {}
 }
 
-class LifeMouseListener(callback:(Int, Int, Int) => Unit) extends MouseListener {
+class LifeMouseListener(callback:(Int, Int, Int) => Unit)
+  extends MouseListener with Logging {
   def mouseClicked(event:MouseEvent) = {
-    println("clicked")
-    //callback(event.getButton(), event.getX(), event.getY())
+    callback(event.getButton(), event.getX(), event.getY())
   }
   def mouseEntered(event:MouseEvent) = {}
   def mouseExited(event:MouseEvent) = {}
-  def mousePressed(event:MouseEvent) = {
-    println("pressed")
-  }
-
-  def mouseReleased(event:MouseEvent) = {
-    println("released")
-  }
+  def mousePressed(event:MouseEvent) = {}
+  def mouseReleased(event:MouseEvent) = {}
 }
 
 class Renderer(width:Int, height:Int) extends Logging {
@@ -58,9 +68,11 @@ class Renderer(width:Int, height:Int) extends Logging {
                         .getDefaultConfiguration()
 
   val canvas = new Canvas(config)
+  canvas.addFocusListener(new LifeFocusListener(() => log.info("focused canvas")))
   canvas.setSize(width, height)
 
   val frame = new JFrame()
+  frame.addFocusListener(new LifeFocusListener(() => log.info("focused frame")))
   frame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE)
   frame.setSize(width, height);
   frame.add(canvas, 0);
@@ -68,6 +80,7 @@ class Renderer(width:Int, height:Int) extends Logging {
 
   // can't create buffer strategies until visible
   canvas.createBufferStrategy(2)
+  canvas.requestFocusInWindow()
   val strategy = canvas.getBufferStrategy()
 
   val background = config.createCompatibleImage(width, height, Transparency.OPAQUE)
@@ -81,11 +94,11 @@ class Renderer(width:Int, height:Int) extends Logging {
   }
 
   def addKeyListener(callback:(Int) => Unit) = {
-    frame.addKeyListener(new LifeKeyListener(callback))
+    canvas.addKeyListener(new LifeKeyListener(callback))
   }
 
   def addMouseListener(callback:(Int, Int, Int) => Unit) = {
-    frame.addMouseListener(new LifeMouseListener(callback))
+    canvas.addMouseListener(new LifeMouseListener(callback))
   }
 
   def dispose() = {
@@ -99,7 +112,6 @@ class Renderer(width:Int, height:Int) extends Logging {
   }
 
   def render(grid:Grid):Unit = {
-    log.info("Renderer:render()")
     val bgGraphics = background.createGraphics()
     bgGraphics.setColor(Color.WHITE)
     bgGraphics.fill(new Rectangle(0,0,height,width))

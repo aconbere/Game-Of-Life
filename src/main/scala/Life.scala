@@ -4,7 +4,7 @@ import com.codahale.logula.Logging
 import org.apache.log4j.Level
 
 object Life {
-  val grid = new Grid(100, 100)
+  val grid = new Grid(200, 200)
 
   grid.setCell(5, 6, true)
   grid.setCell(5, 7, true)

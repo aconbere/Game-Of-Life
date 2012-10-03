@@ -24,7 +24,6 @@ class GridShardActor(shard:Rect) extends Actor with Logging {
     loop {
       react {
         case Next(grid:Grid) =>
-          log.info("GridShardActor:next(): %s".format(shard))
           reply(grid.next(shard))
         case _ => exit()
       }
@@ -34,7 +33,7 @@ class GridShardActor(shard:Rect) extends Actor with Logging {
 
 class Runner(grid:Grid, renderer:Renderer) extends Logging {
   var state:State = RUNNING
-  var history:List[Grid] = List()
+  var updates:List[(Int, Int)] = List()
 
   val workers = grid.shards.map(s => new GridShardActor(s))
   workers.foreach(w => w.start())
@@ -42,7 +41,6 @@ class Runner(grid:Grid, renderer:Renderer) extends Logging {
   val _stitch = M.stitch(grid.height, grid.width) _
 
   def next(g:Grid, h:List[Grid]) = {
-    log.info("Runner:next()")
     val n = _stitch(workers.map(w => w !! Next(g))
                            .map(f =>
                               f() match {
@@ -67,7 +65,19 @@ class Runner(grid:Grid, renderer:Renderer) extends Logging {
     }
   )
 
-  renderer.addMouseListener((button:Int, x:Int, y:Int) => println("wtf"))
+  renderer.addMouseListener((button:Int, x:Int, y:Int) =>
+    button match {
+      case 1 =>
+        state match {
+          case PAUSED =>
+            log.info("new updates")
+            updates = (x / 4, y / 4) +: updates
+          case _ =>
+        }
+      case _ =>
+        log.info("button:%s".format(button))
+    }
+  )
 
   def stop() = {
     renderer.dispose()
@@ -79,9 +89,7 @@ class Runner(grid:Grid, renderer:Renderer) extends Logging {
   renderer.addWindowListener(() => stop())
 
   def run() = {
-    log.info("Runner:run()")
     def inner(g:Grid, h:List[Grid]):Unit = {
-      log.info("Runner:run():inner()")
       state match {
         case RUNNING =>
           log.info("RUNNING")
@@ -100,7 +108,12 @@ class Runner(grid:Grid, renderer:Renderer) extends Logging {
           log.info("STOPPED")
           stop()
         case PAUSED =>
-          log.info("PAUSED")
+          log.info("PAUSED:%s".format(updates.length))
+          for ((x:Int, y:Int) <- updates) {
+            log.info("flipping")
+            g.flipCell(x,y)
+          }
+          updates = List()
           renderer.render(g)
           inner(g, h)
         case _ =>
