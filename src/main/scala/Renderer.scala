@@ -18,6 +18,7 @@ import java.awt.event.WindowEvent
 import java.awt.event.KeyListener
 import java.awt.event.KeyEvent
 import java.awt.event.MouseListener
+import java.awt.event.MouseMotionListener
 import java.awt.event.MouseEvent
 import java.awt.event.FocusListener
 import java.awt.event.FocusEvent
@@ -61,6 +62,15 @@ class LifeMouseListener(callback:(Int, Int, Int) => Unit)
   def mouseReleased(event:MouseEvent) = {}
 }
 
+class LifeMouseMotionListener(callback: (Int, Int) => Unit)
+  extends MouseMotionListener with Logging {
+
+  def mouseDragged(event:MouseEvent) = {}
+  def mouseMoved(event:MouseEvent) = {
+    callback(event.getX(), event.getY())
+  }
+}
+
 class Renderer(width:Int, height:Int) extends Logging {
   val config = GraphicsEnvironment
                         .getLocalGraphicsEnvironment()
@@ -68,11 +78,11 @@ class Renderer(width:Int, height:Int) extends Logging {
                         .getDefaultConfiguration()
 
   val canvas = new Canvas(config)
-  canvas.addFocusListener(new LifeFocusListener(() => log.info("focused canvas")))
+  //canvas.addFocusListener(new LifeFocusListener(() => log.info("focused canvas")))
   canvas.setSize(width, height)
 
   val frame = new JFrame()
-  frame.addFocusListener(new LifeFocusListener(() => log.info("focused frame")))
+  //frame.addFocusListener(new LifeFocusListener(() => log.info("focused frame")))
   frame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE)
   frame.setSize(width, height);
   frame.add(canvas, 0);
@@ -101,25 +111,40 @@ class Renderer(width:Int, height:Int) extends Logging {
     canvas.addMouseListener(new LifeMouseListener(callback))
   }
 
+  def addMouseMotionListener(callback:(Int, Int) => Unit) = {
+    canvas.addMouseMotionListener(new LifeMouseMotionListener(callback))
+  }
+
   def dispose() = {
     frame.dispose()
   }
 
   def drawGrid(bgGraphics:Graphics2D) = {
     bgGraphics.setColor(Color.GRAY)
-    for (i <- 0 to width) bgGraphics.draw(new Line2D.Double(i * 4, 0, i * 4, height))
-    for (j <- 0 to height) bgGraphics.draw(new Line2D.Double(0, j*4, width, j*4))
+    for (i <- 0 to width)
+      bgGraphics.draw(new Line2D.Double(i * 4, 0, i * 4, height))
+    for (j <- 0 to height)
+      bgGraphics.draw(new Line2D.Double(0, j*4, width, j*4))
   }
 
-  def render(grid:Grid):Unit = {
+  def render(grid:Grid, hover:(Int,Int)):Unit = {
     val bgGraphics = background.createGraphics()
+    val (hoverX, hoverY) = hover
     bgGraphics.setColor(Color.WHITE)
     bgGraphics.fill(new Rectangle(0,0,height,width))
 
     drawGrid(bgGraphics)
 
-    bgGraphics.setColor(Color.BLACK)
+    hover match {
+      case (x:Int, y:Int) =>
+        val gX = x - x%4
+        val gY = y - y%4
+        bgGraphics.setColor(Color.GRAY)
+        bgGraphics.fill(new Rectangle(gX, gY, 4, 4))
+      case _ =>
+    }
 
+    bgGraphics.setColor(Color.BLACK)
     grid.foreach((i,j,live) => if (live) bgGraphics.fill(new Rectangle(i*4,j*4,4,4)))
 
     val graphics = strategy.getDrawGraphics()
@@ -127,7 +152,6 @@ class Renderer(width:Int, height:Int) extends Logging {
 
     strategy.show()
     Toolkit.getDefaultToolkit().sync()
-    Thread.sleep(250)
 
     graphics.dispose()
   }

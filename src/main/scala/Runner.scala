@@ -34,8 +34,9 @@ class GridShardActor(shard:Rect) extends Actor with Logging {
 class Runner(grid:Grid, renderer:Renderer) extends Logging {
   var state:State = RUNNING
   var updates:List[(Int, Int)] = List()
-
+  var hover:(Int, Int) = (0,0)
   val workers = grid.shards.map(s => new GridShardActor(s))
+
   workers.foreach(w => w.start())
 
   val _stitch = M.stitch(grid.height, grid.width) _
@@ -70,14 +71,16 @@ class Runner(grid:Grid, renderer:Renderer) extends Logging {
       case 1 =>
         state match {
           case PAUSED =>
-            log.info("new updates")
             updates = (x / 4, y / 4) +: updates
           case _ =>
         }
       case _ =>
-        log.info("button:%s".format(button))
     }
   )
+
+  renderer.addMouseMotionListener((x:Int, y:Int) => {
+    hover = (x,y)
+  })
 
   def stop() = {
     renderer.dispose()
@@ -89,36 +92,41 @@ class Runner(grid:Grid, renderer:Renderer) extends Logging {
   renderer.addWindowListener(() => stop())
 
   def run() = {
-    def inner(g:Grid, h:List[Grid]):Unit = {
+    def inner(lastFrame:Long)(g:Grid, h:List[Grid]):Unit = {
       state match {
         case RUNNING =>
-          log.info("RUNNING")
-          renderer.render(g)
-          (inner _).tupled(next(g, h))
+          val now = System.currentTimeMillis
+          if (lastFrame + 100 < now) {
+            renderer.render(g, hover)
+            (inner(now) _).tupled(next(g, h))
+          } else {
+            inner(lastFrame)(g, h)
+          }
         case REVERSED =>
-          log.info("REVERSED")
-          renderer.render(g)
-          h match {
-            case x::xs => inner(x, xs)
-            case Nil =>
-              state = PAUSED
-              inner(g,h)
+          renderer.render(g, hover)
+          val now = System.currentTimeMillis
+          if (lastFrame + 100 < now) {
+            h match {
+              case x::xs => inner(now)(x, xs)
+              case Nil =>
+                state = PAUSED
+                inner(now)(g, h)
+            }
+          } else {
+            inner(lastFrame)(g, h)
           }
         case STOPPED =>
-          log.info("STOPPED")
           stop()
         case PAUSED =>
-          log.info("PAUSED:%s".format(updates.length))
           for ((x:Int, y:Int) <- updates) {
-            log.info("flipping")
             g.flipCell(x,y)
           }
           updates = List()
-          renderer.render(g)
-          inner(g, h)
+          renderer.render(g, hover)
+          inner(lastFrame)(g, h)
         case _ =>
       }
     }
-    inner(grid, List())
+    inner(System.currentTimeMillis)(grid, List())
   }
 }
